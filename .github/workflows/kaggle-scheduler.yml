@@ -2,12 +2,8 @@ name: Run Kaggle Notebook
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '15 */6 * * *'
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - master
 
 jobs:
   run-notebook:
@@ -19,9 +15,9 @@ jobs:
         with:
           python-version: '3.10'
       
-      - name: Install Required Packages
+      - name: Install Kaggle CLI
         run: |
-          pip install kaggle requests
+          pip install kaggle
       
       - name: Configure Kaggle Credentials
         run: |
@@ -29,97 +25,17 @@ jobs:
           echo '{"username":"shreevathsbbhh","key":"46675a9b7dbf9ee364dccd62b33c1354"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Force Stop All Running Versions
-        run: |
-          echo "========================================="
-          echo "FORCE STOPPING ALL RUNNING NOTEBOOK VERSIONS"
-          echo "========================================="
-          
-          cat > force_stop.py <<'EOF'
-          import requests
-          import json
-          import time
-          
-          username = "shreevathsbbhh"
-          api_key = "46675a9b7dbf9ee364dccd62b33c1354"
-          kernel_slug = "new-6"
-          
-          # API endpoint to cancel kernel
-          base_url = "https://www.kaggle.com/api/v1"
-          
-          print(f"Checking for running versions of {username}/{kernel_slug}...")
-          
-          # Get all kernel versions
-          list_url = f"{base_url}/kernels/list?user={username}"
-          headers = {"Content-Type": "application/json"}
-          
-          try:
-              response = requests.get(list_url, auth=(username, api_key), headers=headers)
-              
-              if response.status_code == 200:
-                  kernels = response.json()
-                  
-                  for kernel in kernels:
-                      if kernel_slug in kernel.get('ref', ''):
-                          total_versions = kernel.get('totalVersions', 0)
-                          print(f"Found kernel with {total_versions} total versions")
-                          
-                          # Try to cancel recent versions (last 5)
-                          for version_num in range(max(1, total_versions - 5), total_versions + 1):
-                              try:
-                                  cancel_url = f"{base_url}/kernels/cancel/{username}/{kernel_slug}/{version_num}"
-                                  print(f"Attempting to cancel version #{version_num}...")
-                                  
-                                  cancel_response = requests.post(
-                                      cancel_url, 
-                                      auth=(username, api_key),
-                                      headers=headers
-                                  )
-                                  
-                                  if cancel_response.status_code in [200, 204]:
-                                      print(f"✅ Version #{version_num} cancelled successfully")
-                                  elif cancel_response.status_code == 404:
-                                      print(f"⚠️ Version #{version_num} not found or already stopped")
-                                  else:
-                                      print(f"⚠️ Version #{version_num} cancel status: {cancel_response.status_code}")
-                                  
-                                  time.sleep(1)  # Rate limiting
-                                  
-                              except Exception as e:
-                                  print(f"Error cancelling version #{version_num}: {str(e)}")
-                          
-                          break
-              else:
-                  print(f"Could not fetch kernel list: {response.status_code}")
-                  print(f"Response: {response.text}")
-                  
-          except Exception as e:
-              print(f"Error in force stop: {str(e)}")
-          
-          print("\n========================================")
-          print("Force stop completed - waiting 5 seconds...")
-          print("========================================")
-          time.sleep(5)
-          EOF
-          
-          python force_stop.py
-      
       - name: Pull Latest Notebook
         run: |
-          echo "========================================="
-          echo "Pulling latest notebook from Kaggle..."
-          echo "========================================="
-          kaggle kernels pull shreevathsbbhh/new-7 -p ./notebook -m
-          echo "Notebook pulled successfully!"
+          kaggle kernels pull shreevathsbbhh/new-6 -p ./notebook -m
       
-      - name: Create/Update Metadata File
+      - name: Create Metadata File
         run: |
-          echo "Creating kernel-metadata.json..."
           cat > ./notebook/kernel-metadata.json <<EOF
           {
-            "id": "shreevathsbbhh/new-7",
-            "title": "new-7",
-            "code_file": "new-7.ipynb",
+            "id": "shreevathsbbhh/new-6",
+            "title": "new-6",
+            "code_file": "new-6.ipynb",
             "language": "python",
             "kernel_type": "notebook",
             "is_private": false,
@@ -131,33 +47,13 @@ jobs:
             "kernel_sources": []
           }
           EOF
-          echo "Metadata file created!"
       
-      - name: Start Fresh Notebook Execution
+      - name: Push Fresh Notebook
         run: |
-          echo "========================================="
-          echo "STARTING FRESH NOTEBOOK EXECUTION"
-          echo "Time: $(date)"
-          echo "========================================="
           cd ./notebook
           kaggle kernels push
-          echo "========================================="
-          echo "✅ NEW FRESH EXECUTION STARTED!"
-          echo "All old executions have been stopped"
-          echo "========================================="
       
-      - name: Verify New Execution
+      - name: Verify Execution
         run: |
-          echo "Waiting 10 seconds for new execution to initialize..."
           sleep 10
-          
-          echo "========================================="
-          echo "Checking new execution status..."
-          echo "========================================="
-          kaggle kernels status shreevathsbbhh/new-7
-          
-          echo "========================================="
-          echo "✅ WORKFLOW COMPLETED!"
-          echo "Old versions stopped, new version running"
-          echo "Next run in 6 minutes"
-          echo "========================================="
+          kaggle kernels status shreevathsbbhh/new-6
