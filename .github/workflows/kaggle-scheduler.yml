@@ -1,20 +1,14 @@
-name: Kaggle Auto Restart
+name: Kaggle Restart
 
 on:
-  push:
-    branches: [main]
+  repository_dispatch:
+    types: [restart-kaggle]
   workflow_dispatch:
 
 jobs:
   restart:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-      
       - name: Install Kaggle
         run: pip install kaggle
       
@@ -24,28 +18,10 @@ jobs:
           echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Restart Kaggle NOW
+      - name: Restart Kaggle
         run: |
           mkdir -p notebook
           cd notebook
           kaggle kernels pull shreevathsbbhh/new-7 -m
           kaggle kernels push
-      
-      - name: Schedule Next Run
-        uses: actions/github-script@v6
-        with:
-          script: |
-            setTimeout(async () => {
-              await github.rest.repos.createOrUpdateFileContents({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                path: 'trigger.txt',
-                message: 'Next run',
-                content: Buffer.from(new Date().toString()).toString('base64'),
-                sha: (await github.rest.repos.getContent({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  path: 'trigger.txt'
-                }).catch(() => null))?.data?.sha
-              });
-            }, 120000);
+          echo "✅ Restarted at $(date)"
