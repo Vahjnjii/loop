@@ -1,27 +1,37 @@
-name: Kaggle Restart
+name: Run Kaggle Notebook
 
 on:
-  repository_dispatch:
-    types: [restart-kaggle]
-  workflow_dispatch:
+  schedule:
+    - cron: '*/6 * * * *'  # Every 6 minutes
+  workflow_dispatch:  # Manual trigger button
 
 jobs:
-  restart:
+  run-notebook:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Install Kaggle
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      
+      - name: Install Kaggle CLI
         run: pip install kaggle
       
-      - name: Setup Credentials
+      - name: Configure Kaggle Credentials
         run: |
           mkdir -p ~/.kaggle
-          echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
+          echo '{"username":"shreevathsbbhh","key":"46675a9b7dbf9ee364dccd62b33c1354"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Restart Kaggle
+      - name: Run Kaggle Notebook
         run: |
-          mkdir -p notebook
-          cd notebook
-          kaggle kernels pull shreevathsbbhh/new-7 -m
-          kaggle kernels push
-          echo "✅ Restarted at $(date)"
+          echo "Triggering notebook execution at $(date)"
+          kaggle kernels pull shreevathsbbhh/new-7 -p ./notebook
+          kaggle kernels push -p ./notebook
+          echo "Notebook triggered successfully!"
+      
+      - name: Check Status
+        run: |
+          sleep 10
+          kaggle kernels status shreevathsbbhh/new-7 || echo "Status check completed"
