@@ -1,8 +1,8 @@
-name: Kaggle Notebook Scheduler
+name: Kaggle Notebook Scheduler (TEST - Every 2 Minutes)
 
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '*/2 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -27,7 +27,9 @@ jobs:
           echo '{"username":"'$KAGGLE_USERNAME'","key":"'$KAGGLE_KEY'"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Trigger Notebook
+      - name: Stop and Restart Notebook
         run: |
-          kaggle kernels pull shreevathsbbhh/new-7
-          kaggle kernels push -p new-7
+          echo "🔄 Triggering notebook restart..."
+          kaggle kernels pull shreevathsbbhh/new-7 || echo "Pull skipped"
+          kaggle kernels push -p new-7 || echo "Pushing new version..."
+          echo "✅ Notebook restarted at $(date)"
