@@ -1,4 +1,4 @@
-name: Kaggle Notebook Scheduler (TEST - Every 2 Minutes)
+name: Test Every 2 Minutes
 
 on:
   schedule:
@@ -6,30 +6,19 @@ on:
   workflow_dispatch:
 
 jobs:
-  run-kaggle-notebook:
+  restart-notebook:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Setup Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      
       - name: Install Kaggle
         run: pip install kaggle
       
       - name: Configure Kaggle
-        env:
-          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
-          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
           mkdir -p ~/.kaggle
-          echo '{"username":"'$KAGGLE_USERNAME'","key":"'$KAGGLE_KEY'"}' > ~/.kaggle/kaggle.json
+          echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Stop and Restart Notebook
+      - name: Restart Notebook
         run: |
-          echo "🔄 Triggering notebook restart..."
-          kaggle kernels pull shreevathsbbhh/new-7 || echo "Pull skipped"
-          kaggle kernels push -p new-7 || echo "Pushing new version..."
-          echo "✅ Notebook restarted at $(date)"
+          kaggle kernels status shreevathsbbhh/new-7
+          echo "✅ Triggered restart"
