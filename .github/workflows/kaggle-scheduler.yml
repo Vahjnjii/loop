@@ -1,4 +1,4 @@
-name: Kaggle Auto Restart Chain
+name: Kaggle Auto Restart
 
 on:
   push:
@@ -24,7 +24,7 @@ jobs:
           echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Restart Kaggle Notebook
+      - name: Restart Kaggle Notebook NOW
         run: |
           mkdir -p notebook
           cd notebook
@@ -32,12 +32,32 @@ jobs:
           kaggle kernels push
           echo "✅ Kaggle restarted at $(date)"
       
-      - name: Schedule Next Run
+      - name: Schedule Next Run (in background)
         run: |
           git config user.name "Bot"
           git config user.email "bot@github.com"
           echo "$(date)" > trigger.txt
           git add trigger.txt
-          git commit -m "Trigger next run"
-          sleep 120
-          git push
+          git commit -m "Next run"
+          
+          nohup bash -c "sleep 120 && git push" &
+          
+          echo "✅ Workflow complete. Next run scheduled in 2 minutes."
+```
+
+---
+
+## **Timeline:**
+```
+12:00:00 - Workflow starts
+12:00:05 - Kaggle restarts ✅
+12:00:10 - Commits prepared
+12:00:10 - Background job: waits 2 min
+12:00:15 - Workflow ENDS ✅
+
+(Background continues on GitHub server)
+
+12:02:10 - Background pushes commit
+12:02:15 - NEW workflow triggers
+12:02:20 - Kaggle restarts again ✅
+...
