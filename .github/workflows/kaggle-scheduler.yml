@@ -1,4 +1,4 @@
-name: Test Every 2 Minutes
+name: Kaggle Restart Every 2 Min
 
 on:
   schedule:
@@ -6,13 +6,13 @@ on:
   workflow_dispatch:
 
 jobs:
-  restart-notebook:
+  restart:
     runs-on: ubuntu-latest
     steps:
       - name: Install Kaggle
         run: pip install kaggle
       
-      - name: Configure Kaggle
+      - name: Setup Credentials
         run: |
           mkdir -p ~/.kaggle
           echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
@@ -21,4 +21,4 @@ jobs:
       - name: Restart Notebook
         run: |
           kaggle kernels status shreevathsbbhh/new-7
-          echo "✅ Triggered restart"
+          echo "✅ Restart triggered"
