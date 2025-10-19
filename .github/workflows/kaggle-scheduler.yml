@@ -42,7 +42,7 @@ jobs:
           
           username = "shreevathsbbhh"
           api_key = "46675a9b7dbf9ee364dccd62b33c1354"
-          kernel_slug = "new-7"
+          kernel_slug = "new-6"
           
           # API endpoint to cancel kernel
           base_url = "https://www.kaggle.com/api/v1"
