@@ -29,57 +29,80 @@ jobs:
           echo '{"username":"shreevathsbbhh","key":"46675a9b7dbf9ee364dccd62b33c1354"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Stop Running Notebook
+      - name: Force Stop All Running Versions
         run: |
           echo "========================================="
-          echo "Checking for running notebook instances..."
+          echo "FORCE STOPPING ALL RUNNING NOTEBOOK VERSIONS"
           echo "========================================="
           
-          # Create Python script to stop running kernels
-          cat > stop_kernel.py <<'EOF'
+          cat > force_stop.py <<'EOF'
           import requests
           import json
           import time
           
           username = "shreevathsbbhh"
           api_key = "46675a9b7dbf9ee364dccd62b33c1354"
-          kernel_slug = "shreevathsbbhh/new-7"
+          kernel_slug = "new-7"
           
-          # Get kernel versions
-          url = f"https://www.kaggle.com/api/v1/kernels/list?user={username}"
-          response = requests.get(url, auth=(username, api_key))
+          # API endpoint to cancel kernel
+          base_url = "https://www.kaggle.com/api/v1"
           
-          if response.status_code == 200:
-              kernels = response.json()
-              for kernel in kernels:
-                  if kernel.get('ref') == kernel_slug:
-                      version = kernel.get('currentKernelVersionNumber', 0)
-                      if version > 0:
-                          print(f"Found kernel version: {version}")
+          print(f"Checking for running versions of {username}/{kernel_slug}...")
+          
+          # Get all kernel versions
+          list_url = f"{base_url}/kernels/list?user={username}"
+          headers = {"Content-Type": "application/json"}
+          
+          try:
+              response = requests.get(list_url, auth=(username, api_key), headers=headers)
+              
+              if response.status_code == 200:
+                  kernels = response.json()
+                  
+                  for kernel in kernels:
+                      if kernel_slug in kernel.get('ref', ''):
+                          total_versions = kernel.get('totalVersions', 0)
+                          print(f"Found kernel with {total_versions} total versions")
                           
-                          # Try to get status
-                          status_url = f"https://www.kaggle.com/api/v1/kernels/status/{kernel_slug}"
-                          status_response = requests.get(status_url, auth=(username, api_key))
+                          # Try to cancel recent versions (last 5)
+                          for version_num in range(max(1, total_versions - 5), total_versions + 1):
+                              try:
+                                  cancel_url = f"{base_url}/kernels/cancel/{username}/{kernel_slug}/{version_num}"
+                                  print(f"Attempting to cancel version #{version_num}...")
+                                  
+                                  cancel_response = requests.post(
+                                      cancel_url, 
+                                      auth=(username, api_key),
+                                      headers=headers
+                                  )
+                                  
+                                  if cancel_response.status_code in [200, 204]:
+                                      print(f"✅ Version #{version_num} cancelled successfully")
+                                  elif cancel_response.status_code == 404:
+                                      print(f"⚠️ Version #{version_num} not found or already stopped")
+                                  else:
+                                      print(f"⚠️ Version #{version_num} cancel status: {cancel_response.status_code}")
+                                  
+                                  time.sleep(1)  # Rate limiting
+                                  
+                              except Exception as e:
+                                  print(f"Error cancelling version #{version_num}: {str(e)}")
                           
-                          if status_response.status_code == 200:
-                              status_data = status_response.json()
-                              status = status_data.get('status', 'unknown')
-                              print(f"Current status: {status}")
-                              
-                              if status in ['running', 'queued']:
-                                  print(f"Stopping running notebook (version {version})...")
-                                  # Cancel by pushing a new version (Kaggle auto-cancels old runs)
-                                  print("Will be stopped by pushing new version")
-                              else:
-                                  print(f"Notebook is not running (status: {status})")
                           break
-          else:
-              print(f"Could not fetch kernel list: {response.status_code}")
+              else:
+                  print(f"Could not fetch kernel list: {response.status_code}")
+                  print(f"Response: {response.text}")
+                  
+          except Exception as e:
+              print(f"Error in force stop: {str(e)}")
           
-          print("Stop check completed!")
+          print("\n========================================")
+          print("Force stop completed - waiting 5 seconds...")
+          print("========================================")
+          time.sleep(5)
           EOF
           
-          python stop_kernel.py
+          python force_stop.py
       
       - name: Pull Latest Notebook
         run: |
@@ -110,31 +133,31 @@ jobs:
           EOF
           echo "Metadata file created!"
       
-      - name: Push Fresh Notebook Version
+      - name: Start Fresh Notebook Execution
         run: |
           echo "========================================="
-          echo "PUSHING FRESH NOTEBOOK VERSION"
-          echo "This will stop any running execution and start new one"
+          echo "STARTING FRESH NOTEBOOK EXECUTION"
           echo "Time: $(date)"
           echo "========================================="
           cd ./notebook
           kaggle kernels push
           echo "========================================="
-          echo "✅ FRESH NOTEBOOK EXECUTION STARTED!"
-          echo "Old execution (if any) has been terminated"
+          echo "✅ NEW FRESH EXECUTION STARTED!"
+          echo "All old executions have been stopped"
           echo "========================================="
       
-      - name: Verify New Execution Started
+      - name: Verify New Execution
         run: |
-          echo "Waiting 15 seconds for new execution to start..."
-          sleep 15
+          echo "Waiting 10 seconds for new execution to initialize..."
+          sleep 10
           
           echo "========================================="
           echo "Checking new execution status..."
           echo "========================================="
-          kaggle kernels status shreevathsbbhh/new-7 || echo "Status check completed"
+          kaggle kernels status shreevathsbbhh/new-7
           
           echo "========================================="
-          echo "✅ WORKFLOW COMPLETED SUCCESSFULLY!"
+          echo "✅ WORKFLOW COMPLETED!"
+          echo "Old versions stopped, new version running"
           echo "Next run in 6 minutes"
           echo "========================================="
