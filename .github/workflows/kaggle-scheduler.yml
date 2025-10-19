@@ -9,8 +9,9 @@ jobs:
   restart:
     runs-on: ubuntu-latest
     steps:
-      - name: Install Kaggle
-        run: pip install kaggle
+      - name: Install Dependencies
+        run: |
+          pip install kaggle requests
       
       - name: Setup Credentials
         run: |
@@ -18,7 +19,22 @@ jobs:
           echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Restart Notebook
+      - name: Restart via API
+        env:
+          KAGGLE_USERNAME: ${{ secrets.KAGGLE_USERNAME }}
+          KAGGLE_KEY: ${{ secrets.KAGGLE_KEY }}
         run: |
-          kaggle kernels status shreevathsbbhh/new-7
-          echo "✅ Restart triggered"
+          python3 << 'EOF'
+          import requests
+          from requests.auth import HTTPBasicAuth
+          import os
+          
+          username = os.environ['KAGGLE_USERNAME']
+          key = os.environ['KAGGLE_KEY']
+          
+          # Trigger new session by pulling and pushing
+          import subprocess
+          subprocess.run(['kaggle', 'kernels', 'pull', 'shreevathsbbhh/new-7', '-m'])
+          subprocess.run(['kaggle', 'kernels', 'push'])
+          print("✅ Restart triggered")
+          EOF
