@@ -20,19 +20,14 @@ jobs:
           echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Download Latest Version
+      - name: Download Latest
         run: |
           mkdir -p notebook
           cd notebook
           kaggle kernels pull shreevathsbbhh/new-7 -m
       
-      - name: Stop Old & Start New Session
+      - name: Restart Notebook
         run: |
           cd notebook
           kaggle kernels push
           echo "✅ Restarted at $(date)"
-      
-      - name: Verify
-        run: |
-          sleep 10
-          kaggle kernels status shreevathsbbhh/new-7
