@@ -29,25 +29,50 @@ jobs:
           echo '{"username":"shreevathsbbhh","key":"46675a9b7dbf9ee364dccd62b33c1354"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Run Kaggle Notebook
+      - name: Pull Notebook
         run: |
           echo "========================================="
-          echo "Starting Kaggle Notebook Execution"
+          echo "Pulling Kaggle Notebook"
           echo "Time: $(date)"
           echo "========================================="
-          
-          # Pull the latest version of the notebook
-          kaggle kernels pull shreevathsbbhh/new-7 -p ./notebook
-          
-          # Push to trigger execution
-          kaggle kernels push -p ./notebook
-          
+          kaggle kernels pull shreevathsbbhh/new-7 -p ./notebook -m
+      
+      - name: Create Metadata File
+        run: |
+          echo "Creating kernel-metadata.json..."
+          cat > ./notebook/kernel-metadata.json <<EOF
+          {
+            "id": "shreevathsbbhh/new-7",
+            "title": "new-7",
+            "code_file": "new-7.ipynb",
+            "language": "python",
+            "kernel_type": "notebook",
+            "is_private": false,
+            "enable_gpu": false,
+            "enable_tpu": false,
+            "enable_internet": true,
+            "dataset_sources": [],
+            "competition_sources": [],
+            "kernel_sources": []
+          }
+          EOF
+          echo "Metadata file created successfully!"
+          cat ./notebook/kernel-metadata.json
+      
+      - name: Push and Execute Notebook
+        run: |
+          echo "========================================="
+          echo "Pushing notebook to trigger execution..."
+          echo "========================================="
+          cd ./notebook
+          kaggle kernels push
           echo "========================================="
           echo "Notebook execution triggered successfully!"
+          echo "Time: $(date)"
           echo "========================================="
       
-      - name: Wait and Check Status
+      - name: Check Status
         run: |
-          echo "Waiting 15 seconds for kernel to start..."
-          sleep 15
+          echo "Waiting 10 seconds..."
+          sleep 10
           kaggle kernels status shreevathsbbhh/new-7 || echo "Status check completed"
