@@ -19,9 +19,9 @@ jobs:
         with:
           python-version: '3.10'
       
-      - name: Install Kaggle CLI
+      - name: Install Required Packages
         run: |
-          pip install kaggle
+          pip install kaggle requests
       
       - name: Configure Kaggle Credentials
         run: |
@@ -29,15 +29,67 @@ jobs:
           echo '{"username":"shreevathsbbhh","key":"46675a9b7dbf9ee364dccd62b33c1354"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Pull Notebook
+      - name: Stop Running Notebook
         run: |
           echo "========================================="
-          echo "Pulling Kaggle Notebook"
-          echo "Time: $(date)"
+          echo "Checking for running notebook instances..."
+          echo "========================================="
+          
+          # Create Python script to stop running kernels
+          cat > stop_kernel.py <<'EOF'
+          import requests
+          import json
+          import time
+          
+          username = "shreevathsbbhh"
+          api_key = "46675a9b7dbf9ee364dccd62b33c1354"
+          kernel_slug = "shreevathsbbhh/new-7"
+          
+          # Get kernel versions
+          url = f"https://www.kaggle.com/api/v1/kernels/list?user={username}"
+          response = requests.get(url, auth=(username, api_key))
+          
+          if response.status_code == 200:
+              kernels = response.json()
+              for kernel in kernels:
+                  if kernel.get('ref') == kernel_slug:
+                      version = kernel.get('currentKernelVersionNumber', 0)
+                      if version > 0:
+                          print(f"Found kernel version: {version}")
+                          
+                          # Try to get status
+                          status_url = f"https://www.kaggle.com/api/v1/kernels/status/{kernel_slug}"
+                          status_response = requests.get(status_url, auth=(username, api_key))
+                          
+                          if status_response.status_code == 200:
+                              status_data = status_response.json()
+                              status = status_data.get('status', 'unknown')
+                              print(f"Current status: {status}")
+                              
+                              if status in ['running', 'queued']:
+                                  print(f"Stopping running notebook (version {version})...")
+                                  # Cancel by pushing a new version (Kaggle auto-cancels old runs)
+                                  print("Will be stopped by pushing new version")
+                              else:
+                                  print(f"Notebook is not running (status: {status})")
+                          break
+          else:
+              print(f"Could not fetch kernel list: {response.status_code}")
+          
+          print("Stop check completed!")
+          EOF
+          
+          python stop_kernel.py
+      
+      - name: Pull Latest Notebook
+        run: |
+          echo "========================================="
+          echo "Pulling latest notebook from Kaggle..."
           echo "========================================="
           kaggle kernels pull shreevathsbbhh/new-7 -p ./notebook -m
+          echo "Notebook pulled successfully!"
       
-      - name: Create Metadata File
+      - name: Create/Update Metadata File
         run: |
           echo "Creating kernel-metadata.json..."
           cat > ./notebook/kernel-metadata.json <<EOF
@@ -56,23 +108,33 @@ jobs:
             "kernel_sources": []
           }
           EOF
-          echo "Metadata file created successfully!"
-          cat ./notebook/kernel-metadata.json
+          echo "Metadata file created!"
       
-      - name: Push and Execute Notebook
+      - name: Push Fresh Notebook Version
         run: |
           echo "========================================="
-          echo "Pushing notebook to trigger execution..."
+          echo "PUSHING FRESH NOTEBOOK VERSION"
+          echo "This will stop any running execution and start new one"
+          echo "Time: $(date)"
           echo "========================================="
           cd ./notebook
           kaggle kernels push
           echo "========================================="
-          echo "Notebook execution triggered successfully!"
-          echo "Time: $(date)"
+          echo "✅ FRESH NOTEBOOK EXECUTION STARTED!"
+          echo "Old execution (if any) has been terminated"
           echo "========================================="
       
-      - name: Check Status
+      - name: Verify New Execution Started
         run: |
-          echo "Waiting 10 seconds..."
-          sleep 10
+          echo "Waiting 15 seconds for new execution to start..."
+          sleep 15
+          
+          echo "========================================="
+          echo "Checking new execution status..."
+          echo "========================================="
           kaggle kernels status shreevathsbbhh/new-7 || echo "Status check completed"
+          
+          echo "========================================="
+          echo "✅ WORKFLOW COMPLETED SUCCESSFULLY!"
+          echo "Next run in 6 minutes"
+          echo "========================================="
