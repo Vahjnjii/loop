@@ -1,16 +1,20 @@
-name: Kaggle Restart Every 2 Min
+name: Kaggle Auto Restart Chain
 
 on:
-  schedule:
-    - cron: '*/2 * * * *'
-  workflow_dispatch:
   push:
     branches: [main]
+  workflow_dispatch:
 
 jobs:
   restart:
     runs-on: ubuntu-latest
+    
     steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
       - name: Install Kaggle
         run: pip install kaggle
       
@@ -20,14 +24,20 @@ jobs:
           echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Download Latest
+      - name: Restart Kaggle Notebook
         run: |
           mkdir -p notebook
           cd notebook
           kaggle kernels pull shreevathsbbhh/new-7 -m
-      
-      - name: Restart Notebook
-        run: |
-          cd notebook
           kaggle kernels push
-          echo "✅ Restarted at $(date)"
+          echo "✅ Kaggle restarted at $(date)"
+      
+      - name: Schedule Next Run
+        run: |
+          git config user.name "Bot"
+          git config user.email "bot@github.com"
+          echo "$(date)" > trigger.txt
+          git add trigger.txt
+          git commit -m "Trigger next run"
+          sleep 120
+          git push
