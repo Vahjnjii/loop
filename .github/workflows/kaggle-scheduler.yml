@@ -9,60 +9,52 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
       
-      - name: Install Kaggle CLI
-        run: |
-          pip install kaggle
+      - name: Install Kaggle
+        run: pip install kaggle
       
-      - name: Configure Kaggle Credentials
+      - name: Configure Credentials
         run: |
           mkdir -p ~/.kaggle
           echo '{"username":"shreevathsbbhh","key":"46675a9b7dbf9ee364dccd62b33c1354"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Pull Latest Notebook
+      - name: Pull and Modify Notebook
         run: |
-          echo "========================================="
-          echo "Pulling notebook from Kaggle..."
-          echo "========================================="
+          # Pull notebook
           kaggle kernels pull shreevathsbbhh/new-6 -p ./notebook -m
-          echo "Notebook pulled successfully!"
-      
-      - name: Modify Notebook to Force New Version
-        run: |
-          echo "Adding timestamp to force new version..."
+          
           cd ./notebook
-          # Add a comment with timestamp to the notebook to make it "different"
-          python3 << EOF
+          
+          # Add timestamp cell to force new version
+          python3 << 'EOF'
           import json
           from datetime import datetime
           
           with open('new-6.ipynb', 'r') as f:
-              notebook = json.load(f)
+              nb = json.load(f)
           
-          # Add a markdown cell with timestamp at the beginning
-          timestamp_cell = {
-              "cell_type": "markdown",
+          # Insert timestamp cell
+          nb['cells'].insert(0, {
+              "cell_type": "code",
+              "execution_count": None,
               "metadata": {},
-              "source": [f"<!-- Auto-run timestamp: {datetime.now().isoformat()} -->"]
-          }
-          
-          notebook['cells'].insert(0, timestamp_cell)
+              "outputs": [],
+              "source": [f"# Auto-triggered at {datetime.now().isoformat()}\n", "print('Notebook started!')"]
+          })
           
           with open('new-6.ipynb', 'w') as f:
-              json.dump(notebook, f, indent=1)
+              json.dump(nb, f, indent=2)
           
-          print("✅ Notebook modified with timestamp")
+          print("✅ Notebook modified")
           EOF
-      
-      - name: Create Metadata File
-        run: |
-          echo "Creating kernel-metadata.json..."
-          cat > ./notebook/kernel-metadata.json <<EOF
+          
+          # Recreate metadata
+          cat > kernel-metadata.json << 'METADATA'
           {
             "id": "shreevathsbbhh/new-6",
             "title": "new-6",
@@ -77,25 +69,16 @@ jobs:
             "competition_sources": [],
             "kernel_sources": []
           }
-          EOF
-          echo "Metadata file created!"
+          METADATA
+          
+          # Push to trigger execution
+          echo "Pushing notebook to Kaggle..."
+          kaggle kernels push
+          
+          echo "✅ Notebook pushed! New execution should start."
+          echo "🔗 Check: https://www.kaggle.com/code/shreevathsbbhh/new-6"
       
-      - name: Push with New Version Flag
+      - name: Wait and Check
         run: |
-          echo "========================================="
-          echo "PUSHING NEW VERSION TO TRIGGER EXECUTION"
-          echo "Time: $(date)"
-          echo "========================================="
-          cd ./notebook
-          kaggle kernels push --new-version-notes "Auto-run at $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
-          echo "========================================="
-          echo "✅ NEW VERSION PUSHED - EXECUTION SHOULD START"
-          echo "========================================="
-      
-      - name: Wait and Check Status
-        run: |
-          echo "Waiting 30 seconds for execution to start..."
           sleep 30
-          echo "Checking execution status..."
           kaggle kernels status shreevathsbbhh/new-6
-          echo "✅ Check your Kaggle notebook page for the new run!"
