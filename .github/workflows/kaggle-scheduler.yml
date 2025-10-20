@@ -46,13 +46,18 @@ jobs:
           echo '{"username":"shreevathsbbhh","key":"46675a9b7dbf9ee364dccd62b33c1354"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
-      - name: Pull Notebook from Kaggle
+      - name: Pull Notebook and Metadata from Kaggle
         run: |
-          echo "📥 Pulling notebook..."
+          echo "📥 Pulling notebook with metadata..."
           kaggle kernels pull shreevathsbbhh/new-6 -p ./notebook -m
           if [ ! -f "./notebook/new-6.ipynb" ]; then
             echo "❌ Failed to download"
             exit 1
+          fi
+          if [ -f "./notebook/kernel-metadata.json" ]; then
+            echo "✅ Metadata downloaded (datasets preserved)"
+          else
+            echo "⚠️ No metadata file"
           fi
       
       - name: Modify Notebook with Timestamp
@@ -93,33 +98,6 @@ jobs:
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
-      
-      - name: Get Existing Metadata with Datasets
-        run: |
-          cd ./notebook
-          echo "📥 Downloading existing metadata..."
-          kaggle kernels metadata shreevathsbbhh/new-6 -p .
-          if [ -f "kernel-metadata.json" ]; then
-            echo "✅ Metadata preserved with datasets"
-          else
-            echo "⚠️ Creating new metadata"
-            cat > kernel-metadata.json << 'METADATA'
-            {
-              "id": "shreevathsbbhh/new-6",
-              "title": "new-6",
-              "code_file": "new-6.ipynb",
-              "language": "python",
-              "kernel_type": "notebook",
-              "is_private": false,
-              "enable_gpu": false,
-              "enable_tpu": false,
-              "enable_internet": true,
-              "dataset_sources": [],
-              "competition_sources": [],
-              "kernel_sources": []
-            }
-            METADATA
-          fi
       
       - name: Push Notebook to Kaggle
         run: |
