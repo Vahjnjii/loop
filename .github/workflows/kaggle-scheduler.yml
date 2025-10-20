@@ -1,5 +1,4 @@
 name: Run Kaggle Notebook
-
 on:
   schedule:
     - cron: '15 */6 * * *'
@@ -33,6 +32,33 @@ jobs:
           kaggle kernels pull shreevathsbbhh/new-6 -p ./notebook -m
           echo "Notebook pulled successfully!"
       
+      - name: Modify Notebook to Force New Version
+        run: |
+          echo "Adding timestamp to force new version..."
+          cd ./notebook
+          # Add a comment with timestamp to the notebook to make it "different"
+          python3 << EOF
+          import json
+          from datetime import datetime
+          
+          with open('new-6.ipynb', 'r') as f:
+              notebook = json.load(f)
+          
+          # Add a markdown cell with timestamp at the beginning
+          timestamp_cell = {
+              "cell_type": "markdown",
+              "metadata": {},
+              "source": [f"<!-- Auto-run timestamp: {datetime.now().isoformat()} -->"]
+          }
+          
+          notebook['cells'].insert(0, timestamp_cell)
+          
+          with open('new-6.ipynb', 'w') as f:
+              json.dump(notebook, f, indent=1)
+          
+          print("✅ Notebook modified with timestamp")
+          EOF
+      
       - name: Create Metadata File
         run: |
           echo "Creating kernel-metadata.json..."
@@ -54,22 +80,22 @@ jobs:
           EOF
           echo "Metadata file created!"
       
-      - name: Push Fresh Notebook
+      - name: Push with New Version Flag
         run: |
           echo "========================================="
-          echo "PUSHING FRESH NOTEBOOK VERSION"
+          echo "PUSHING NEW VERSION TO TRIGGER EXECUTION"
           echo "Time: $(date)"
           echo "========================================="
           cd ./notebook
-          kaggle kernels push
+          kaggle kernels push --new-version-notes "Auto-run at $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
           echo "========================================="
-          echo "✅ NEW EXECUTION STARTED!"
-          echo "Next run in 6 hours 15 minutes"
+          echo "✅ NEW VERSION PUSHED - EXECUTION SHOULD START"
           echo "========================================="
       
-      - name: Verify Execution
+      - name: Wait and Check Status
         run: |
-          echo "Waiting 10 seconds..."
-          sleep 10
+          echo "Waiting 30 seconds for execution to start..."
+          sleep 30
+          echo "Checking execution status..."
           kaggle kernels status shreevathsbbhh/new-6
-          echo "✅ Workflow completed successfully!"
+          echo "✅ Check your Kaggle notebook page for the new run!"
