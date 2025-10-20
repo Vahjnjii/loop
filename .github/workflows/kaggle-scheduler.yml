@@ -6,7 +6,7 @@ on:
     paths:
       - '.github/workflows/kaggle-scheduler.yml'
   schedule:
-    - cron: '*/11 * * * *'  # ⏰ RUNS EVERY 11 MINUTES (for testing)
+    - cron: '*/30 * * * *'  # Every 30 minutes
   workflow_dispatch:
 
 jobs:
@@ -14,228 +14,137 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-      # STEP 1: Get the repository code
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       
-      # STEP 2: Keep repository active (prevents GitHub from disabling schedule)
       - name: Keep Repository Active
         run: |
           mkdir -p .github
-          echo "Last automated run: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" > .github/last-run.txt
-          echo "Run count: $(git rev-list --count HEAD 2>/dev/null || echo 0)" >> .github/last-run.txt
-          echo "Trigger type: ${{ github.event_name }}" >> .github/last-run.txt
-          
+          echo "Last run: $(date -u +"%Y-%m-%d %H:%M:%S UTC")" > .github/last-run.txt
+          echo "Trigger: ${{ github.event_name }}" >> .github/last-run.txt
           git config user.name "GitHub Actions Bot"
           git config user.email "actions@github.com"
           git add .github/last-run.txt
-          
-          # Only commit if there are changes
           if ! git diff --staged --quiet; then
-            git commit -m "🤖 Test run: $(date -u +%Y-%m-%d-%H%M)"
+            git commit -m "🤖 Run: $(date -u +%Y-%m-%d-%H%M)"
             git push
-            echo "✅ Repository activity logged"
-          else
-            echo "ℹ️ No changes to commit"
           fi
       
-      # STEP 3: Install Python
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
       
-      # STEP 4: Install Kaggle CLI tool
       - name: Install Kaggle CLI
-        run: |
-          pip install --quiet kaggle
-          echo "✅ Kaggle CLI installed"
+        run: pip install --quiet kaggle
       
-      # STEP 5: Configure Kaggle credentials
       - name: Configure Kaggle Credentials
         run: |
           mkdir -p ~/.kaggle
           echo '{"username":"shreevathsbbhh","key":"46675a9b7dbf9ee364dccd62b33c1354"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
-          echo "✅ Kaggle credentials configured"
       
-      # STEP 6: Download current notebook from Kaggle
       - name: Pull Notebook from Kaggle
         run: |
-          echo "========================================="
-          echo "📥 PULLING NOTEBOOK FROM KAGGLE"
-          echo "⏰ Test Mode: Running every 11 minutes"
-          echo "Time: $(date -u +"%Y-%m-%d %H:%M:%S UTC")"
-          echo "Trigger: ${{ github.event_name }}"
-          echo "========================================="
-          
+          echo "📥 Pulling notebook..."
           kaggle kernels pull shreevathsbbhh/new-6 -p ./notebook -m
-          
-          if [ -f "./notebook/new-6.ipynb" ]; then
-            echo "✅ Notebook downloaded successfully"
-          else
-            echo "❌ Failed to download notebook"
+          if [ ! -f "./notebook/new-6.ipynb" ]; then
+            echo "❌ Failed to download"
             exit 1
           fi
       
-      # STEP 7: Modify notebook to create a new version
       - name: Modify Notebook with Timestamp
         run: |
           cd ./notebook
-          
-          echo "🔧 Adding timestamp to notebook..."
-          
           python3 << 'EOF'
           import json
           from datetime import datetime
           import os
           
-          # Read the notebook
           with open('new-6.ipynb', 'r', encoding='utf-8') as f:
               notebook = json.load(f)
           
-          # Get trigger type from environment
-          trigger_type = os.environ.get('GITHUB_EVENT_NAME', 'unknown')
-          run_number = os.environ.get('GITHUB_RUN_NUMBER', '0')
-          current_time = datetime.utcnow()
+          trigger = os.environ.get('GITHUB_EVENT_NAME', 'unknown')
+          run_num = os.environ.get('GITHUB_RUN_NUMBER', '0')
+          now = datetime.utcnow()
           
-          # Create a timestamp cell
           timestamp_cell = {
               "cell_type": "code",
               "execution_count": None,
               "metadata": {},
               "outputs": [],
               "source": [
-                  f"# 🧪 TEST MODE - Running Every 11 Minutes\n",
-                  f"# ⏰ Triggered at: {current_time.strftime('%Y-%m-%d %H:%M:%S')} UTC\n",
-                  f"# 📊 Trigger type: {trigger_type}\n",
-                  f"# 🔢 Run number: {run_number}\n",
-                  "\n",
+                  f"# Automated run triggered at {now.isoformat()}\n",
                   "import datetime\n",
-                  "print('='*60)\n",
-                  "print('🧪 TEST MODE: Notebook runs every 11 minutes')\n",
-                  f"print('⏰ Started at:', datetime.datetime.now())\n",
-                  f"print('📊 Trigger: {trigger_type}')\n",
-                  f"print('🔢 Run #{run_number}')\n",
-                  "print('='*60)\n",
-                  "print('\\n✅ This is a test run to verify automation works!')\n",
-                  "print('⚠️ Remember to change back to 6-hour schedule after testing\\n')\n"
+                  f"print('Notebook execution started at: {now}')\n",
+                  "print('This run was triggered automatically')"
               ]
           }
           
-          # Insert at the beginning
           notebook['cells'].insert(0, timestamp_cell)
           
-          # Save the modified notebook
           with open('new-6.ipynb', 'w', encoding='utf-8') as f:
               json.dump(notebook, f, indent=2, ensure_ascii=False)
           
-          print("✅ Notebook modified with timestamp cell")
-          print(f"   Total cells: {len(notebook['cells'])}")
-          print(f"   Test run at: {current_time.strftime('%H:%M:%S')} UTC")
+          print(f"✅ Modified at {now.strftime('%H:%M:%S')} UTC")
           EOF
-          
-          echo "✅ Modification complete"
         env:
           GITHUB_EVENT_NAME: ${{ github.event_name }}
           GITHUB_RUN_NUMBER: ${{ github.run_number }}
       
-      # STEP 8: Create metadata file for Kaggle
-      - name: Create Kernel Metadata
+      - name: Get Existing Metadata with Datasets
         run: |
           cd ./notebook
-          
-          cat > kernel-metadata.json << 'METADATA'
-          {
-            "id": "shreevathsbbhh/new-6",
-            "title": "new-6",
-            "code_file": "new-6.ipynb",
-            "language": "python",
-            "kernel_type": "notebook",
-            "is_private": false,
-            "enable_gpu": false,
-            "enable_tpu": false,
-            "enable_internet": true,
-            "dataset_sources": [],
-            "competition_sources": [],
-            "kernel_sources": []
-          }
-          METADATA
-          
-          echo "✅ Metadata file created"
+          echo "📥 Downloading existing metadata..."
+          kaggle kernels metadata shreevathsbbhh/new-6 -p .
+          if [ -f "kernel-metadata.json" ]; then
+            echo "✅ Metadata preserved with datasets"
+          else
+            echo "⚠️ Creating new metadata"
+            cat > kernel-metadata.json << 'METADATA'
+            {
+              "id": "shreevathsbbhh/new-6",
+              "title": "new-6",
+              "code_file": "new-6.ipynb",
+              "language": "python",
+              "kernel_type": "notebook",
+              "is_private": false,
+              "enable_gpu": false,
+              "enable_tpu": false,
+              "enable_internet": true,
+              "dataset_sources": [],
+              "competition_sources": [],
+              "kernel_sources": []
+            }
+            METADATA
+          fi
       
-      # STEP 9: Push notebook back to Kaggle (triggers execution)
       - name: Push Notebook to Kaggle
         run: |
           cd ./notebook
-          
-          echo "========================================="
-          echo "📤 PUSHING NOTEBOOK TO KAGGLE"
-          echo "🧪 TEST MODE: Every 11 minutes"
-          echo "This will trigger a new execution"
-          echo "========================================="
-          
+          echo "📤 Pushing to Kaggle..."
           kaggle kernels push
-          
           if [ $? -eq 0 ]; then
-            echo "========================================="
-            echo "✅ NOTEBOOK PUSHED SUCCESSFULLY!"
-            echo "🚀 New execution should start on Kaggle"
-            echo "⏰ Next test run: 11 minutes from now"
-            echo "========================================="
+            echo "✅ Push successful"
           else
-            echo "❌ Failed to push notebook"
+            echo "❌ Push failed"
             exit 1
           fi
       
-      # STEP 10: Wait and check status
-      - name: Verify Kaggle Execution
+      - name: Verify Execution
         run: |
-          echo "⏳ Waiting 20 seconds for Kaggle to process..."
           sleep 20
-          
-          echo "📊 Checking notebook status..."
-          kaggle kernels status shreevathsbbhh/new-6 || echo "Status check completed"
-          
-          echo ""
-          echo "========================================="
-          echo "✅ TEST RUN COMPLETED"
-          echo "========================================="
-          echo "🔗 Notebook: https://www.kaggle.com/code/shreevathsbbhh/new-6"
-          echo "📊 Check versions tab to see new execution"
-          echo ""
-          echo "⏰ NEXT TEST RUN: 11 minutes from now"
-          echo "🧪 Running in TEST MODE"
-          echo ""
-          echo "⚠️  IMPORTANT: After testing, change cron back to:"
-          echo "    cron: '15 */6 * * *'"
-          echo "========================================="
+          kaggle kernels status shreevathsbbhh/new-6 || true
+          echo "✅ Complete"
+          echo "🔗 https://www.kaggle.com/code/shreevathsbbhh/new-6"
       
-      # STEP 11: Create execution summary
-      - name: Create Execution Summary
+      - name: Summary
         if: always()
         run: |
-          echo "## 🧪 Test Execution Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**⚠️ RUNNING IN TEST MODE - Every 11 Minutes**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## Execution Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Run Number:** ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
-          echo "- [Kaggle Notebook](https://www.kaggle.com/code/shreevathsbbhh/new-6)" >> $GITHUB_STEP_SUMMARY
-          echo "- [Notebook Versions](https://www.kaggle.com/code/shreevathsbbhh/new-6/versions)" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ⏰ Next Test Run" >> $GITHUB_STEP_SUMMARY
-          echo "**11 minutes** from this run" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### ⚠️ Remember" >> $GITHUB_STEP_SUMMARY
-          echo "After testing, change the cron schedule back to:" >> $GITHUB_STEP_SUMMARY
-          echo '```yaml' >> $GITHUB_STEP_SUMMARY
-          echo "schedule:" >> $GITHUB_STEP_SUMMARY
-          echo "  - cron: '15 */6 * * *'  # Every 6 hours" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "- **Next Run:** 30 minutes" >> $GITHUB_STEP_SUMMARY
