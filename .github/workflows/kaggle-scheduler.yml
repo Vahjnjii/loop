@@ -6,7 +6,7 @@ on:
     paths:
       - '.github/workflows/kaggle-scheduler.yml'
   schedule:
-    - cron: '*/30 * * * *'  # Every 30 minutes
+    - cron: '0 */5 * * *'  # Every 5 hours
   workflow_dispatch:
 
 jobs:
@@ -125,4 +125,4 @@ jobs:
           echo "- **Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Next Run:** 30 minutes" >> $GITHUB_STEP_SUMMARY
+          echo "- **Next Run:** 5 hours" >> $GITHUB_STEP_SUMMARY
