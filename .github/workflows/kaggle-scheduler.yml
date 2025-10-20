@@ -1,5 +1,10 @@
 name: Run Kaggle Notebook
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/kaggle-scheduler.yml'
   schedule:
     - cron: '15 */6 * * *'
   workflow_dispatch:
@@ -25,6 +30,11 @@ jobs:
       
       - name: Pull and Modify Notebook
         run: |
+          echo "========================================="
+          echo "Starting Kaggle Notebook Trigger"
+          echo "Time: $(date)"
+          echo "========================================="
+          
           # Pull notebook
           kaggle kernels pull shreevathsbbhh/new-6 -p ./notebook -m
           
@@ -38,22 +48,29 @@ jobs:
           with open('new-6.ipynb', 'r') as f:
               nb = json.load(f)
           
-          # Insert timestamp cell
-          nb['cells'].insert(0, {
+          # Insert timestamp cell at the beginning
+          timestamp_cell = {
               "cell_type": "code",
               "execution_count": None,
               "metadata": {},
               "outputs": [],
-              "source": [f"# Auto-triggered at {datetime.now().isoformat()}\n", "print('Notebook started!')"]
-          })
+              "source": [
+                  f"# Automated run triggered at {datetime.now().isoformat()}\n",
+                  "import datetime\n",
+                  f"print('Notebook execution started at: {datetime.now()}')\n",
+                  "print('This run was triggered automatically')"
+              ]
+          }
+          
+          nb['cells'].insert(0, timestamp_cell)
           
           with open('new-6.ipynb', 'w') as f:
               json.dump(nb, f, indent=2)
           
-          print("✅ Notebook modified")
+          print("✅ Notebook modified with timestamp")
           EOF
           
-          # Recreate metadata
+          # Create metadata
           cat > kernel-metadata.json << 'METADATA'
           {
             "id": "shreevathsbbhh/new-6",
@@ -71,14 +88,22 @@ jobs:
           }
           METADATA
           
-          # Push to trigger execution
           echo "Pushing notebook to Kaggle..."
           kaggle kernels push
           
-          echo "✅ Notebook pushed! New execution should start."
-          echo "🔗 Check: https://www.kaggle.com/code/shreevathsbbhh/new-6"
+          echo "========================================="
+          echo "✅ Notebook pushed successfully!"
+          echo "New execution should start on Kaggle"
+          echo "========================================="
       
-      - name: Wait and Check
+      - name: Verify Status
         run: |
-          sleep 30
+          echo "Waiting 20 seconds for Kaggle to process..."
+          sleep 20
+          echo "Checking notebook status..."
           kaggle kernels status shreevathsbbhh/new-6
+          echo ""
+          echo "🔗 Check your notebook: https://www.kaggle.com/code/shreevathsbbhh/new-6"
+          echo "========================================="
+          echo "Next automatic run: 6 hours 15 minutes from now"
+          echo "========================================="
