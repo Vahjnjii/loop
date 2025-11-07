@@ -6,7 +6,7 @@ on:
     paths:
       - '.github/workflows/kaggle-scheduler.yml'
   schedule:
-    - cron: '0 */12 * * *'  # Every 12 hours
+    - cron: '45 */11 * * *'  # Every 11 hours 45 minutes (runs at :45 of every 11th hour)
   workflow_dispatch:
 
 jobs:
@@ -49,8 +49,8 @@ jobs:
       - name: Pull Notebook and Metadata from Kaggle
         run: |
           echo "📥 Pulling notebook with metadata..."
-          kaggle kernels pull shreevathsbbhh/new-6 -p ./notebook -m
-          if [ ! -f "./notebook/new-6.ipynb" ]; then
+          kaggle kernels pull shreevathsbbhh/new-7 -p ./notebook -m
+          if [ ! -f "./notebook/new-7.ipynb" ]; then
             echo "❌ Failed to download"
             exit 1
           fi
@@ -59,45 +59,6 @@ jobs:
           else
             echo "⚠️ No metadata file"
           fi
-      
-      - name: Modify Notebook with Timestamp
-        run: |
-          cd ./notebook
-          python3 << 'EOF'
-          import json
-          from datetime import datetime
-          import os
-          
-          with open('new-6.ipynb', 'r', encoding='utf-8') as f:
-              notebook = json.load(f)
-          
-          trigger = os.environ.get('GITHUB_EVENT_NAME', 'unknown')
-          run_num = os.environ.get('GITHUB_RUN_NUMBER', '0')
-          now = datetime.utcnow()
-          
-          timestamp_cell = {
-              "cell_type": "code",
-              "execution_count": None,
-              "metadata": {},
-              "outputs": [],
-              "source": [
-                  f"# Automated run triggered at {now.isoformat()}\n",
-                  "import datetime\n",
-                  f"print('Notebook execution started at: {now}')\n",
-                  "print('This run was triggered automatically')"
-              ]
-          }
-          
-          notebook['cells'].insert(0, timestamp_cell)
-          
-          with open('new-6.ipynb', 'w', encoding='utf-8') as f:
-              json.dump(notebook, f, indent=2, ensure_ascii=False)
-          
-          print(f"✅ Modified at {now.strftime('%H:%M:%S')} UTC")
-          EOF
-        env:
-          GITHUB_EVENT_NAME: ${{ github.event_name }}
-          GITHUB_RUN_NUMBER: ${{ github.run_number }}
       
       - name: Push Notebook to Kaggle
         run: |
@@ -114,9 +75,9 @@ jobs:
       - name: Verify Execution
         run: |
           sleep 20
-          kaggle kernels status shreevathsbbhh/new-6 || true
+          kaggle kernels status shreevathsbbhh/new-7 || true
           echo "✅ Complete"
-          echo "🔗 https://www.kaggle.com/code/shreevathsbbhh/new-6"
+          echo "🔗 https://www.kaggle.com/code/shreevathsbbhh/new-7"
       
       - name: Summary
         if: always()
@@ -125,4 +86,4 @@ jobs:
           echo "- **Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Next Run:** 12 hours" >> $GITHUB_STEP_SUMMARY
+          echo "- **Next Run:** 11 hours 45 minutes" >> $GITHUB_STEP_SUMMARY
