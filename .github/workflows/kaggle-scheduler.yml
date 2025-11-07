@@ -84,7 +84,7 @@ jobs:
                   f"# Automated run triggered at {now.isoformat()}\n",
                   "import datetime\n",
                   f"print('Notebook execution started at: {now}')\n",
-                  "print('This run was triggered automatically')"
+                  "print('This run was triggered automatcally')"
               ]
           }
           
