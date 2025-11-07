@@ -6,7 +6,7 @@ on:
     paths:
       - '.github/workflows/kaggle-scheduler.yml'
   schedule:
-    - cron: '0 */5 * * *'  # Every 5 hours
+    - cron: '0 */12 * * *'  # Every 12 hours
   workflow_dispatch:
 
 jobs:
@@ -43,7 +43,7 @@ jobs:
       - name: Configure Kaggle Credentials
         run: |
           mkdir -p ~/.kaggle
-          echo '{"username":"shreevathsbbhh","key":"46675a9b7dbf9ee364dccd62b33c1354"}' > ~/.kaggle/kaggle.json
+          echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
       - name: Pull Notebook and Metadata from Kaggle
@@ -84,7 +84,7 @@ jobs:
                   f"# Automated run triggered at {now.isoformat()}\n",
                   "import datetime\n",
                   f"print('Notebook execution started at: {now}')\n",
-                  "print('This run was triggered automatcally')"
+                  "print('This run was triggered automatically')"
               ]
           }
           
@@ -125,4 +125,4 @@ jobs:
           echo "- **Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Next Run:** 5 hours" >> $GITHUB_STEP_SUMMARY
+          echo "- **Next Run:** ~13 hours (12h notebook + buffer)" >> $GITHUB_STEP_SUMMARY
