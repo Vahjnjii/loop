@@ -43,7 +43,7 @@ jobs:
       - name: Configure Kaggle Credentials
         run: |
           mkdir -p ~/.kaggle
-          echo '{"username":"${{ secrets.KAGGLE_USERNAME }}","key":"${{ secrets.KAGGLE_KEY }}"}' > ~/.kaggle/kaggle.json
+          echo '{"username":"shreevathsbbhh","key":"9f167cdee8a045c97ca6a2f82c6701f9"}' > ~/.kaggle/kaggle.json
           chmod 600 ~/.kaggle/kaggle.json
       
       - name: Pull Notebook and Metadata from Kaggle
@@ -125,4 +125,4 @@ jobs:
           echo "- **Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "- **Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Status:** ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Next Run:** ~13 hours (12h notebook + buffer)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Next Run:** 12 hours" >> $GITHUB_STEP_SUMMARY
