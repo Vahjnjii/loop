@@ -6,7 +6,7 @@ on:
     paths:
       - '.github/workflows/kaggle-scheduler.yml'
   schedule:
-    - cron: '45 */11 * * *'  # Every 11 hours 45 minutes (runs at :45 of every 11tah hour)
+    - cron: '45 */11 * * *'  # Every 11 hours 45 minutes (runs at :45 of every 11th hour)
   workflow_dispatch:
 
 jobs:
